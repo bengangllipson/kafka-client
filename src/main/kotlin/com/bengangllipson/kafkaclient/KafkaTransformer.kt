@@ -9,7 +9,6 @@ import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -124,13 +123,6 @@ fun ProcessingStep<State<ParsedPayload>>.transform(): ProcessingStep<State<Trans
         })
     }
 
-fun <M, K> hashedValueSelector(
-    workerCount: Int, partitionBy: (M) -> K, mailboxSize: Int = 5000
-): WorkerConfiguration<M> = WorkerConfiguration(
-    count = workerCount, mailboxSize = mailboxSize, selector = { value ->
-        partitionBy(value).hashCode().absoluteValue.rem(workerCount)
-    })
-
 fun <T, R> Flow<T>.parallel(
     workers: WorkerConfiguration<T>, capacity: Int = min(
         Int.MAX_VALUE, workers.count * workers.mailboxSize
@@ -173,7 +165,7 @@ fun createStringConsumer(bootstrapServers: String, groupId: String): KafkaConsum
         put(
             ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer"
         )
-        put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest") // or "latest"
+        put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
         put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
     }
     return KafkaConsumer(props)
