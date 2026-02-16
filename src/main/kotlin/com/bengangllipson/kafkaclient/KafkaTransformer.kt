@@ -216,7 +216,14 @@ class KafkaConsumer {
             }.also { yield() }
         }.flowOn(consumerThread)
 
-        kafkaMessages.map { it.filter() }.map { it.parse() }.map { it.transform() }.collect { it.commitOffsets() }
+        val workerConfiguration = WorkerConfiguration<ProcessingStep<Payload>>(
+            count = 100, mailboxSize = 5000, selector = { (metadata: InputMetadata, _) ->
+                metadata.key.hashCode().absoluteValue.rem(100)
+            })
+
+        kafkaMessages.parallel(workerConfiguration) {
+                it.filter().parse().transform()
+            }.collect { it.commitOffsets() }
     }
 }
 
