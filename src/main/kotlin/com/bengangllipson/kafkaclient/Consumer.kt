@@ -25,7 +25,7 @@ private val consumerThread = Executors.newSingleThreadExecutor { r ->
     Thread(r, "kafka-consumer")
 }.asCoroutineDispatcher()
 
-class Consumer<P, R>(
+class Consumer<R>(
     private val config: Config,
     private val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<R>>,
     private val commitStrategy: suspend (ProcessingStep<State<R>>, KafkaConsumer<String, ByteArray>) -> Unit,
@@ -115,13 +115,13 @@ class Consumer<P, R>(
         return ConsumerHandle(job = job, stop = stop)
     }
 
-    data class Builder<P, R>(
+    data class Builder<R>(
         val config: Config,
         val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<R>>,
         val commitStrategy: suspend (ProcessingStep<State<R>>, KafkaConsumer<String, ByteArray>) -> Unit,
         val onError: (Throwable) -> Unit
     ) {
-        fun build(): Consumer<P, R> {
+        fun build(): Consumer<R> {
             return Consumer(
                 config = config,
                 pipeline = pipeline,

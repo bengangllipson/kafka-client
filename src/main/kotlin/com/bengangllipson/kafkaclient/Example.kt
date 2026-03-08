@@ -85,7 +85,7 @@ class Example {
         throwable.printStackTrace()
     }
 
-    val consumer = Consumer.Builder<ParsedPayload, TransformedResult>(
+    val consumer = Consumer.Builder(
         config = Consumer.Config(
             appName = "example",
             broker = "localhost:9092",
