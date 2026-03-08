@@ -1,6 +1,5 @@
-package com.bengangllipson.pulse
+package com.bengangllipson.pulse.consumer
 
-import com.bengangllipson.pulse.consumer.Consumer
 import com.bengangllipson.pulse.flow.FilteredMessage
 import com.bengangllipson.pulse.flow.State
 import com.bengangllipson.pulse.flow.Success
@@ -16,7 +15,7 @@ import kotlin.math.absoluteValue
 
 @Serializable
 data class ParsedPayload(
-    val tcin: String,
+    val itemId: String,
     val locationId: String,
     val onHandQuantity: List<Event>,
     val onPurchaseQuantity: List<Event>,
@@ -72,7 +71,7 @@ class Example {
             is Success -> {
                 val p = state.value
                 val result = TransformedResult(
-                    tcin = p.tcin,
+                    tcin = p.itemId,
                     locationId = p.locationId,
                     quantity = TransformedResult.Quantity(
                         onHand = p.onHandQuantity.sumOf { it.quantity },
@@ -111,7 +110,7 @@ class Example {
             topics = listOf("my-topic"),
             group = "example-group",
             autoOffsetResetConfig = "earliest",
-            workerConfiguration = WorkerConfiguration(
+            workerConfig = WorkerConfiguration(
                 count = 100, mailboxSize = 5000, selector = { (metadata, _) ->
                     metadata.key.hashCode().absoluteValue.rem(100)
                 }),

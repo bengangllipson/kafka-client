@@ -2,6 +2,7 @@
 
 package com.bengangllipson.pulse.consumer
 
+import com.bengangllipson.pulse.Handle
 import com.bengangllipson.pulse.flow.State
 import com.bengangllipson.pulse.flow.parallel
 import com.bengangllipson.pulse.model.InputMetadata
@@ -18,16 +19,11 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.Executors
 
-private val consumerThread = Executors.newSingleThreadExecutor { r ->
-    Thread(r, "kafka-consumer")
-}.asCoroutineDispatcher()
-
-class Consumer<R>(
+class Consumer<O>(
     private val config: Config,
-    private val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<R>>,
-    private val commitStrategy: suspend (ProcessingStep<State<R>>, KafkaConsumer<String, ByteArray>) -> Unit,
+    private val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<O>>,
+    private val commitStrategy: suspend (ProcessingStep<State<O>>, KafkaConsumer<String, ByteArray>) -> Unit,
     private val onError: (Throwable) -> Unit
 ) {
     data class Config(
@@ -39,22 +35,26 @@ class Consumer<R>(
         val maxPollRecords: Int = 500,
         val autoOffsetResetConfig: String,
         val maxCommitErrors: Int = 10,
-        val workerConfiguration: WorkerConfiguration<ProcessingStep<Payload>>,
+        val driverProperties: Map<String, String>? = emptyMap(),
+        val workerConfig: WorkerConfiguration<ProcessingStep<Payload>>,
     )
 
     private fun createConsumer(): KafkaConsumer<String, ByteArray> {
         val props = Properties().apply {
-            put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.broker)
-            put(ConsumerConfig.GROUP_ID_CONFIG, config.group)
-            put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-            put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer().javaClass)
-            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer().javaClass)
-            put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.autoOffsetResetConfig)
+            this[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = config.broker
+            this[ConsumerConfig.GROUP_ID_CONFIG] = config.group
+            this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+            this[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer().javaClass
+            this[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer().javaClass
+            this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = config.autoOffsetResetConfig
+            config.driverProperties?.entries?.forEach {
+                this[it.key] = it.value
+            }
         }
         return KafkaConsumer(props)
     }
 
-    fun start(): ConsumerHandle {
+    fun start(): Handle {
         val consumer = createConsumer()
         consumer.subscribe(config.topics)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -85,7 +85,7 @@ class Consumer<R>(
                         }
                     }.flowOn(consumerThread)
 
-                    kafkaMessages.parallel(config.workerConfiguration) { step ->
+                    kafkaMessages.parallel(config.workerConfig) { step ->
                         pipeline(step)
                     }.collect { processedStep ->
                         try {
@@ -111,16 +111,16 @@ class Consumer<R>(
             scope.cancel()
         }
 
-        return ConsumerHandle(job = job, stop = stop)
+        return Handle(job = job, stop = stop)
     }
 
-    data class Builder<R>(
+    data class Builder<O>(
         val config: Config,
-        val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<R>>,
-        val commitStrategy: suspend (ProcessingStep<State<R>>, KafkaConsumer<String, ByteArray>) -> Unit,
+        val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<O>>,
+        val commitStrategy: suspend (ProcessingStep<State<O>>, KafkaConsumer<String, ByteArray>) -> Unit,
         val onError: (Throwable) -> Unit
     ) {
-        fun build(): Consumer<R> {
+        fun build(): Consumer<O> {
             return Consumer(
                 config = config,
                 pipeline = pipeline,

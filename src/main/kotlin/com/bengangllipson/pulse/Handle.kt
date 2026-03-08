@@ -1,8 +1,8 @@
-package com.bengangllipson.pulse.consumer
+package com.bengangllipson.pulse
 
 import kotlinx.coroutines.Job
 
-data class ConsumerHandle(
+data class Handle(
     val job: Job,
     val stop: suspend () -> Unit
 )

@@ -2,8 +2,8 @@ plugins {
     application
     id("java")
     `maven-publish`
-    kotlin("jvm") version("2.3.10")
-    kotlin("plugin.serialization") version("2.3.10")
+    kotlin("jvm") version ("2.3.10")
+    kotlin("plugin.serialization") version ("2.3.10")
 }
 
 group = "ben.gangl.lipson"
@@ -21,16 +21,20 @@ val kotlinCoroutinesVersion = "1.7.3"
 val kotlinSerializationJsonVersion = "1.10.0"
 val kafkaClientsVersion = "3.9.1"
 val logbackVersion = "1.5.13"
+val jacksonVersion = "2.21.1"
 
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinCoroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinSerializationJsonVersion")
     implementation("org.apache.kafka:kafka-clients:$kafkaClientsVersion")
-    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("ch.qos.logback:logback-classic:${logbackVersion}")
+    implementation("com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${jacksonVersion}")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:${jacksonVersion}")
 }
 
-tasks.test {
-}
+tasks.test {}
 
 publishing {
     publications {
