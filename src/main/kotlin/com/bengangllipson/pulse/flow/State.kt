@@ -1,4 +1,4 @@
-package com.bengangllipson.kafkaclient.flow
+package com.bengangllipson.pulse.flow
 
 sealed interface State<out T>
 

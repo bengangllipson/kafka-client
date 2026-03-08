@@ -1,19 +1,18 @@
-package com.bengangllipson.kafkaclient
+package com.bengangllipson.pulse
 
-import com.bengangllipson.kafkaclient.consumer.Consumer
-import com.bengangllipson.kafkaclient.flow.FilteredMessage
-import com.bengangllipson.kafkaclient.flow.State
-import com.bengangllipson.kafkaclient.flow.Success
-import com.bengangllipson.kafkaclient.model.Payload
-import com.bengangllipson.kafkaclient.model.ProcessingStep
-import com.bengangllipson.kafkaclient.model.WorkerConfiguration
+import com.bengangllipson.pulse.consumer.Consumer
+import com.bengangllipson.pulse.flow.FilteredMessage
+import com.bengangllipson.pulse.flow.State
+import com.bengangllipson.pulse.flow.Success
+import com.bengangllipson.pulse.model.Payload
+import com.bengangllipson.pulse.model.ProcessingStep
+import com.bengangllipson.pulse.model.WorkerConfiguration
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import kotlin.math.absoluteValue
-
 
 @Serializable
 data class ParsedPayload(
@@ -38,37 +37,58 @@ data class TransformedResult(
 }
 
 class Example {
-    val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<TransformedResult>> =
-        { (metadata, payload) ->
+    fun filter(step: ProcessingStep<Payload>): ProcessingStep<State<Payload>> {
+        val (meta, payload) = step
+        val valid = payload.key.split(":").firstOrNull()?.toIntOrNull() != null
 
-            val valid = payload.key.split(":").firstOrNull()?.toIntOrNull() != null
+        return if (valid) {
+            meta to Success(payload)
+        } else {
+            meta to FilteredMessage
+        }
+    }
 
-            if (!valid) {
-                metadata to FilteredMessage
-            }
-            try {
-                val parsed = Json.decodeFromString<ParsedPayload>(
-                    payload.body.decodeToString()
-                )
-
-                val result = TransformedResult(
-                    tcin = parsed.tcin,
-                    locationId = parsed.locationId,
-                    quantity = TransformedResult.Quantity(
-                        onHand = parsed.onHandQuantity.sumOf { it.quantity },
-                        onPurchase = parsed.onPurchaseQuantity.sumOf { it.quantity },
-                        onTransfer = parsed.onTransferQuantity.sumOf { it.quantity })
-                )
-
-                metadata to Success(result)
-
-            } catch (_: Exception) {
-                metadata to FilteredMessage
+    fun parse(step: ProcessingStep<State<Payload>>): ProcessingStep<State<ParsedPayload>> {
+        val (meta, state) = step
+        return when (state) {
+            is FilteredMessage -> meta to FilteredMessage
+            is Success -> {
+                try {
+                    val parsed = Json.decodeFromString<ParsedPayload>(
+                        state.value.body.decodeToString()
+                    )
+                    meta to Success(parsed)
+                } catch (_: Exception) {
+                    meta to FilteredMessage
+                }
             }
         }
+    }
+
+    fun transform(step: ProcessingStep<State<ParsedPayload>>): ProcessingStep<State<TransformedResult>> {
+        val (meta, state) = step
+        return when (state) {
+            is FilteredMessage -> meta to FilteredMessage
+            is Success -> {
+                val p = state.value
+                val result = TransformedResult(
+                    tcin = p.tcin,
+                    locationId = p.locationId,
+                    quantity = TransformedResult.Quantity(
+                        onHand = p.onHandQuantity.sumOf { it.quantity },
+                        onPurchase = p.onPurchaseQuantity.sumOf { it.quantity },
+                        onTransfer = p.onTransferQuantity.sumOf { it.quantity }))
+                meta to Success(result)
+            }
+        }
+    }
+
+    val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<TransformedResult>> = { step ->
+        step.let(::filter).let(::parse).let(::transform)
+    }
 
     val commitStrategy: suspend (ProcessingStep<State<TransformedResult>>, KafkaConsumer<String, ByteArray>) -> Unit =
-        { (metadata, state), consumer ->
+        { (metadata, _), consumer ->
             if (metadata.isEndOfBatch) {
                 val (partition, offset) = metadata.partitionOffset
                 consumer.commitSync(

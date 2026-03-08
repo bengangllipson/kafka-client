@@ -1,4 +1,4 @@
-package com.bengangllipson.kafkaclient.consumer
+package com.bengangllipson.pulse.consumer
 
 import kotlinx.coroutines.Job
 

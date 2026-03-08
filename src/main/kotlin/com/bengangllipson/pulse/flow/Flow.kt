@@ -1,6 +1,6 @@
-package com.bengangllipson.kafkaclient.flow
+package com.bengangllipson.pulse.flow
 
-import com.bengangllipson.kafkaclient.model.WorkerConfiguration
+import com.bengangllipson.pulse.model.WorkerConfiguration
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel

@@ -1,13 +1,13 @@
 @file:OptIn(ExperimentalCoroutinesApi::class)
 
-package com.bengangllipson.kafkaclient.consumer
+package com.bengangllipson.pulse.consumer
 
-import com.bengangllipson.kafkaclient.flow.State
-import com.bengangllipson.kafkaclient.flow.parallel
-import com.bengangllipson.kafkaclient.model.InputMetadata
-import com.bengangllipson.kafkaclient.model.Payload
-import com.bengangllipson.kafkaclient.model.ProcessingStep
-import com.bengangllipson.kafkaclient.model.WorkerConfiguration
+import com.bengangllipson.pulse.flow.State
+import com.bengangllipson.pulse.flow.parallel
+import com.bengangllipson.pulse.model.InputMetadata
+import com.bengangllipson.pulse.model.Payload
+import com.bengangllipson.pulse.model.ProcessingStep
+import com.bengangllipson.pulse.model.WorkerConfiguration
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn

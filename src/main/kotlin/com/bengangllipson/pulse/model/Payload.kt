@@ -1,4 +1,4 @@
-package com.bengangllipson.kafkaclient.model
+package com.bengangllipson.pulse.model
 
 data class Payload(
     val key: String, val body: ByteArray
