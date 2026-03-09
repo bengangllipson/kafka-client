@@ -20,10 +20,10 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import java.time.Duration
 import java.util.*
 
-class Consumer<O>(
+class Consumer<T>(
     val config: Config,
-    val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<O>>,
-    val commitStrategy: suspend (ProcessingStep<State<O>>, KafkaConsumer<String, ByteArray>) -> Unit,
+    val pipeline: suspend (ProcessingStep<Payload>) -> ProcessingStep<State<T>>,
+    val commitStrategy: suspend (ProcessingStep<State<T>>, KafkaConsumer<String, ByteArray>) -> Unit,
     val onError: (Throwable) -> Unit
 ) {
     data class Config(
